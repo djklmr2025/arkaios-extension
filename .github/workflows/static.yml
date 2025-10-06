@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARKAIOS Lab Gateway - Extensión Oficial</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0d1117;
+      color: #f0f6fc;
+      text-align: center;
+      padding: 40px;
+    }
+    h1 {
+      color: #58a6ff;
+    }
+    .card {
+      background: #161b22;
+      padding: 20px;
+      border-radius: 12px;
+      display: inline-block;
+      max-width: 600px;
+      box-shadow: 0 0 15px #0008;
+    }
+    a.btn {
+      display: inline-block;
+      background: #238636;
+      color: white;
+      padding: 10px 20px;
+      margin: 10px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    a.btn:hover {
+      background: #2ea043;
+    }
+    footer {
+      margin-top: 40px;
+      font-size: 14px;
+      opacity: 0.6;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚀 ARKAIOS Lab Gateway - Chat Extension</h1>
+  <div class="card">
+    <p>Extensión oficial de ARKAIOS Lab Gateway.<br>
+    Compatible con Chrome y Microsoft Edge.</p>
+
+    <h3>📦 Descargas</h3>
+    <a class="btn" href="ARKAIOS-chatv2.0.0-stable+storepack.zip">Descargar ZIP</a>
+    <a class="btn" href="arkaios-extension.crx">Instalar (.CRX)</a>
+
+    <h3>📘 Documentación</h3>
+    <a class="btn" href="README-release.md">README</a>
+    <a class="btn" href="CHANGELOG.md">Changelog</a>
+  </div>
+
+  <footer>
+    <p>Desarrollado por <strong>Jonathan “Sabdy”</strong> · ARKAIOS Lab 2025</p>
+  </footer>
+</body>
+</html>
