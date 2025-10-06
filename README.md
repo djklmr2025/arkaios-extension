@@ -1,7 +1,7 @@
 # 🚀 Release Notes — ARKAIOS Chat Extension v2.0.0
 
 **Fecha de publicación:** 06/10/2025  
-**Autor:** Sabdy Jonathan (djklmr2025)  
+**Autor:** (djklmr2025)  
 **Repositorio:** [https://github.com/djklmr2025/arkaios-extension](https://github.com/djklmr2025/arkaios-extension)  
 **Sitio oficial:** [https://djklmr2025.github.io/arkaios-extension/](https://djklmr2025.github.io/arkaios-extension/)
 
