@@ -65,7 +65,7 @@ Diseñada para mejorar la interacción y depuración del entorno ARKAIOS Builder
 
 ## 🏁 Créditos y Agradecimientos
 
-**Desarrollo principal:** Sabdy Jonathan (djklmr2025)  
+**Desarrollo principal:** (djklmr2025)  
 **Asistencia técnica y empaquetado:** GPT‑5 (OpenAI)  
 **Repositorio:** [https://github.com/djklmr2025/arkaios-extension](https://github.com/djklmr2025/arkaios-extension)  
 
