@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARKAIOS Lab - Chat Module</title>
+    <link rel="stylesheet" href="chat-module.css">
+
+  <style id="ark-full-styles">
+    html, body { height:100%; margin:0; padding:0; }
+    body { display:flex; flex-direction:column; box-sizing:border-box; }
+    #app, .chat-container { flex:1 1 auto; min-height:0; }
+  </style>
+
+</head>
+<body style="position:relative;">
+    
+    <div id="ark-openbar" style="position:absolute;top:8px;right:8px;display:flex;gap:8px;align-items:center;">
+      <span id="ark-openmode-label" style="font:12px/1.2 system-ui, sans-serif;opacity:.8"></span>
+      <button id="btnModeSidepanel" title="Preferir Panel" style="padding:4px 8px;">Panel</button>
+      <button id="btnModeWindow" title="Preferir Ventana" style="padding:4px 8px;">Ventana</button>
+      <button id="btnModeOverlay" title="Preferir Integrado (overlay)" style="padding:4px 8px;">Integrado</button>
+      <button id="btnAttachToTab" title="Adjuntar a pestaña actual" style="padding:4px 8px;font-weight:600;">Adjuntar</button>
+    </div>
+
+<div class="chat-container">
+        <!-- Header -->
+        <header class="chat-header">
+            <div class="header-left">
+                <div class="arkaios-logo">
+                    <span class="logo-icon">🚀</span>
+                    <h1>ARKAIOS</h1>
+                    <span class="version">Lab Chat v2.0</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="connection-status" id="gatewayStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Conectando...</span>
+                </div>
+                <button class="settings-btn" id="settingsBtn">⚙️</button>
+            </div>
+        </header>
+
+        <!-- AI Detection Panel -->
+        <div class="ai-detection-panel" id="aiPanel">
+            <h3>🤖 IAs Detectadas</h3>
+            <div class="detected-ais" id="detectedAIs">
+                <div class="no-ais">
+                    <p>🔍 Detectando IAs en páginas web...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gateway Actions Quick Panel -->
+        <div class="gateway-actions" id="gatewayActions">
+            <h4>🌐 Acciones Gateway</h4>
+            <div class="action-buttons">
+                <button class="action-btn" data-action="plan">📋 Plan</button>
+                <button class="action-btn" data-action="analyze">🔍 Analizar</button>
+                <button class="action-btn" data-action="generate">✨ Generar</button>
+                <button class="action-btn" data-action="read">📄 Leer</button>
+            </div>
+        </div>
+
+        <!-- Chat Messages Area -->
+        <div class="chat-messages" id="chatMessages">
+            <!-- Mensaje de bienvenida -->
+            <div class="message system-message">
+                <div class="message-content">
+                    <h3>🎆 Bienvenido al Laboratorio ARKAIOS</h3>
+                    <p>Chat module integrado con el <strong>Gateway ARKAIOS</strong></p>
+                    <div class="capabilities-grid">
+                        <div class="capability">
+                            <span class="cap-icon">📄</span>
+                            <span>Documentos</span>
+                        </div>
+                        <div class="capability">
+                            <span class="cap-icon">🖼️</span>
+                            <span>Imágenes</span>
+                        </div>
+                        <div class="capability">
+                            <span class="cap-icon">🖨️</span>
+                            <span>Impresión</span>
+                        </div>
+                        <div class="capability">
+                            <span class="cap-icon">📁</span>
+                            <span>Archivos</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="chat-input-area">
+            <!-- Toolbar -->
+            <div class="input-toolbar">
+                <button class="tool-btn" id="imageBtn" title="Subir imagen">🖼️</button>
+                <button class="tool-btn" id="fileBtn" title="Acceder archivos">📁</button>
+                <button class="tool-btn" id="printBtn" title="Imprimir documento">🖨️</button>
+                <button class="tool-btn" id="docBtn" title="Generar documento">📄</button>
+                <button class="tool-btn" id="codeBtn" title="Modo código">💻</button>
+                <input type="file" id="fileInput" style="display: none;" accept="image/*,.pdf,.txt,.doc,.docx">
+            </div>
+            
+            <!-- Input Field -->
+            <div class="input-field-container">
+                <textarea 
+                    id="chatInput" 
+                    placeholder="Escribe tu mensaje para ARKAIOS..."
+                    rows="1"
+                ></textarea>
+                <button class="send-btn" id="sendBtn">
+                    <span class="send-icon">➤</span>
+                </button>
+            </div>
+            
+            <!-- Mode Indicator -->
+            <div class="mode-indicator" id="modeIndicator">
+                <span class="mode-text">Modo: Chat Normal</span>
+                <span class="secure-indicator" id="secureMode">🔒 OPEN</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>⚙️ Configuración ARKAIOS</h3>
+                <button class="close-btn" id="closeSettings">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="setting-group">
+                    <h4>🌐 Gateway</h4>
+                    <label>
+                        <input type="text" id="gatewayUrl" placeholder="https://arkaios-gateway-open.onrender.com">
+                        <span>URL del Gateway</span>
+                    </label>
+                    <label>
+                        <input type="text" id="bearerToken" placeholder="Bearer token para modo seguro">
+                        <span>Token de Autenticación</span>
+                    </label>
+                </div>
+                
+                <div class="setting-group">
+                    <h4>🔒 Permisos</h4>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="autoOCR">
+                        <span>OCR automático en imágenes</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="autoPrint">
+                        <span>Acceso automático a impresión</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="fileAccess">
+                        <span>Acceso a archivos locales</span>
+                    </label>
+                </div>
+                
+                <div class="setting-group">
+                    <h4>🤖 IA Detection</h4>
+                    <label>
+                        <select id="detectionMode">
+                            <option value="aggressive">Agresiva</option>
+                            <option value="normal" selected>Normal</option>
+                            <option value="minimal">Mínima</option>
+                        </select>
+                        <span>Modo de detección</span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" id="saveSettings">💾 Guardar</button>
+                <button class="btn-secondary" id="resetSettings">🔄 Restaurar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <p>Procesando con ARKAIOS...</p>
+    </div>
+
+    <script src="chat-module.js"></script>
+    <script src="openbar.js" defer></script>
+</body>
+</html>

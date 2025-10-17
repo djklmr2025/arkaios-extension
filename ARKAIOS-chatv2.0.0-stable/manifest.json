@@ -1,0 +1,67 @@
+{
+  "manifest_version": 3,
+  "name": "ARKAIOS Lab Gateway - Chat Module",
+  "version": "2.0.0",
+  "description": "Módulo de chat vertical para IAs con acceso al laboratorio ARKAIOS y capacidades avanzadas",
+  "permissions": [
+    "activeTab",
+    "downloads",
+    "scripting",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "chat-module.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "ARKAIOS Builder Chat",
+    "default_icon": {
+      "16": "icons/arkaios16.png",
+      "48": "icons/arkaios48.png",
+      "128": "icons/arkaios128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/arkaios16.png",
+    "48": "icons/arkaios48.png",
+    "128": "icons/arkaios128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "arkaios-chat-api.js",
+        "print-preview.html",
+        "icons/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "externally_connectable": {
+    "matches": [
+      "<all_urls>"
+    ]
+  },
+  "side_panel": {
+    "default_path": "chat-module.html"
+  }
+}
