@@ -25,11 +25,20 @@ Diseñada para mejorar la interacción y depuración del entorno ARKAIOS Builder
 
 ## 🧠 Características Principales
 
-- Integración con el entorno ARKAIOS Builder.  
-- Chat lateral persistente con overlay modular.  
-- Modo Debug con trazas de comunicación Gateway ↔ Content Script.  
-- UI refinada con soporte multilenguaje (es/en).  
-- Empaquetado y firmado con certificado PEM único.  
+- Integración con el entorno ARKAIOS Builder.
+- Chat lateral persistente con overlay modular.
+- Modo Debug con trazas de comunicación Gateway ↔ Content Script.
+- UI refinada con soporte multilenguaje (es/en).
+- Empaquetado y firmado con certificado PEM único.
+- Canal seguro de control DOM para inspección/edición remota.
+
+### 🕹️ Control DOM integrado
+
+- El overlay expone un **DomBridge** que recibe órdenes estructuradas desde el chat.
+- Nuevos comandos: botón 🕹️ en la barra de herramientas y `/dom {"action":"READ_TEXT","selector":"h1"}` para enviar instrucciones JSON.
+- Acciones soportadas: lectura de texto/HTML/atributos, highlight, scroll, click/focus, inserción y edición de contenido.
+- Las IAs que consumen `arkaios-chat-api.js` pueden invocar `ARKAIOS.requestDomAction()` y recibir respuestas asincrónicas.
+- Todo comando queda contextualizado en el chat, mostrando los resultados y errores devueltos por el ejecutor del DOM.
 
 ---
 
