@@ -15,6 +15,9 @@
       this.labUrl = 'https://djklmr2025.github.io/builderOS_Lab';
       this.capabilities = [];
       this.sessionId = this.generateSessionId();
+      this.chatWindow = null;
+      this.pendingDomRequests = new Map();
+      this.domControlEnabled = false;
       this.init();
     }
 
@@ -31,16 +34,20 @@
     setupEventListeners() {
       window.addEventListener('message', (event) => {
         if (event.data.type === 'ARKAIOS_CHAT_AVAILABLE') {
-          this.handleChatAvailable(event.data.data);
+          this.handleChatAvailable(event.data.data, event.source);
+        } else if (event.data.type === 'AI_DOM_RESULT') {
+          this.handleDomResult(event.data);
         }
       });
     }
 
-    handleChatAvailable(data) {
+    handleChatAvailable(data, sourceWindow) {
       this.isConnected = true;
       this.capabilities = data.features;
+      this.chatWindow = sourceWindow || this.chatWindow;
+      this.domControlEnabled = Array.isArray(data.features) && data.features.includes('dom.control');
       console.log('✅ ARKAIOS Chat Module conectado con capacidades:', this.capabilities);
-      
+
       // Notificar a las IAs de la disponibilidad
       this.notifyAIsOfChatAvailability();
     }
@@ -273,6 +280,49 @@
       }, '*');
     }
 
+    handleDomResult(payload) {
+      if (!payload || !payload.requestId) return;
+      const pending = this.pendingDomRequests.get(payload.requestId);
+      if (!pending) return;
+
+      clearTimeout(pending.timeout);
+      this.pendingDomRequests.delete(payload.requestId);
+
+      if (payload.success) {
+        pending.resolve(payload.result);
+      } else {
+        pending.reject(new Error(payload.error || 'Orden DOM rechazada'));
+      }
+    }
+
+    requestDomAction(command, options = {}) {
+      if (!this.isConnected || !this.chatWindow) {
+        return Promise.reject(new Error('ARKAIOS Chat no está disponible para control DOM.'));
+      }
+
+      if (!command || typeof command !== 'object') {
+        return Promise.reject(new Error('Comando DOM inválido'));
+      }
+
+      const requestId = `dom_${Date.now()}_${Math.random().toString(16).slice(2, 6)}`;
+
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          this.pendingDomRequests.delete(requestId);
+          reject(new Error('Tiempo de espera agotado para el comando DOM.'));
+        }, options.timeout || 8000);
+
+        this.pendingDomRequests.set(requestId, { resolve, reject, timeout });
+
+        this.chatWindow.postMessage({
+          type: 'AI_DOM_COMMAND',
+          command,
+          requestId,
+          silent: options.silent ?? false
+        }, '*');
+      });
+    }
+
     // Obtener información del lab ARKAIOS
     async getLabInfo() {
       try {
@@ -307,7 +357,8 @@
         version: this.version,
         sessionId: this.sessionId,
         gateway: this.gatewayUrl,
-        lab: this.labUrl
+        lab: this.labUrl,
+        domControl: this.domControlEnabled
       };
     }
 

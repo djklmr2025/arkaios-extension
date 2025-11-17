@@ -1,6 +1,123 @@
 // ARKAIOS Chat Module Controller
 // Interfaz principal del chat integrado con Gateway ARKAIOS
 
+class ArkaiosDomBridge {
+  constructor() {
+    this.mode = this.detectMode();
+    this.pending = new Map();
+
+    if (this.mode === 'embedded') {
+      this.bindParentListener();
+    }
+  }
+
+  detectMode() {
+    if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+      return 'embedded';
+    }
+    if (typeof chrome !== 'undefined' && chrome.runtime && typeof chrome.runtime.sendMessage === 'function') {
+      return 'runtime';
+    }
+    return 'disabled';
+  }
+
+  bindParentListener() {
+    window.addEventListener('message', (event) => {
+      if (event.source !== window.parent) return;
+      const payload = event.data || {};
+      if (payload.type !== 'ARKAIOS_DOM_RESULT') return;
+
+      const { requestId, success, result, error } = payload;
+      const resolver = this.pending.get(requestId);
+      if (!resolver) return;
+      this.pending.delete(requestId);
+
+      if (success) {
+        resolver.resolve(result);
+      } else {
+        resolver.reject(new Error(error || 'Operación DOM rechazada'));
+      }
+    });
+  }
+
+  isEnabled() {
+    return this.mode !== 'disabled';
+  }
+
+  getMode() {
+    return this.mode;
+  }
+
+  describe() {
+    return {
+      enabled: this.isEnabled(),
+      mode: this.mode
+    };
+  }
+
+  sendCommand(command) {
+    if (this.mode === 'embedded') {
+      return this.sendViaParent(command);
+    }
+    if (this.mode === 'runtime') {
+      return this.sendViaRuntime(command);
+    }
+    return Promise.reject(new Error('Control DOM no disponible en este contexto.'));
+  }
+
+  sendViaParent(command) {
+    const requestId = `dom_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.pending.delete(requestId);
+        reject(new Error('Tiempo de espera agotado para la orden DOM.'));
+      }, 8000);
+
+      this.pending.set(requestId, {
+        resolve: (result) => {
+          clearTimeout(timeout);
+          resolve(result);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          reject(error);
+        }
+      });
+
+      window.parent.postMessage({
+        type: 'ARKAIOS_DOM_COMMAND',
+        requestId,
+        command
+      }, '*');
+    });
+  }
+
+  sendViaRuntime(command) {
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({
+        type: 'ARKAIOS_DOM_PROXY',
+        command
+      }, (response) => {
+        const runtimeError = chrome.runtime.lastError;
+        if (runtimeError) {
+          reject(new Error(runtimeError.message || 'Canal DOM no disponible.'));
+          return;
+        }
+        if (!response) {
+          reject(new Error('Sin respuesta del proxy DOM.'));
+          return;
+        }
+        if (response.success) {
+          resolve(response.result);
+        } else {
+          reject(new Error(response.error || 'Error ejecutando DOM.'));
+        }
+      });
+    });
+  }
+}
+
 class ArkaiosChatModule {
   constructor() {
     this.gatewayUrl = 'https://arkaios-gateway-open.onrender.com';
@@ -10,6 +127,7 @@ class ArkaiosChatModule {
     this.chatHistory = [];
     this.isGatewayOnline = false;
     this.currentMode = 'open'; // 'open' o 'secure'
+    this.domBridge = new ArkaiosDomBridge();
     this.init();
   }
 
@@ -77,6 +195,10 @@ class ArkaiosChatModule {
       this.toggleCodeMode();
     });
 
+    document.getElementById('domBtn').addEventListener('click', () => {
+      this.promptDomCommand();
+    });
+
     // File input
     document.getElementById('fileInput').addEventListener('change', (e) => {
       this.handleFileUpload(e.target.files[0]);
@@ -96,8 +218,19 @@ class ArkaiosChatModule {
 
     // Listen for window messages (from injected API)
     window.addEventListener('message', (event) => {
-      if (event.data.type === 'ARKAIOS_CHAT_MESSAGE') {
-        this.handleExternalMessage(event.data.data);
+      const payload = event.data || {};
+      switch (payload.type) {
+        case 'ARKAIOS_CHAT_MESSAGE':
+          this.handleExternalMessage(payload.data);
+          break;
+        case 'AI_REGISTER_WITH_ARKAIOS':
+          this.handleAIRegistration(payload.aiInfo);
+          break;
+        case 'AI_DOM_COMMAND':
+          if (payload.command) {
+            this.handleExternalDomRequest(payload, event);
+          }
+          break;
       }
     });
   }
@@ -106,6 +239,49 @@ class ArkaiosChatModule {
     this.updateGatewayStatus('Verificando conexión...');
     this.updateModeIndicator();
     this.showWelcomeMessage();
+    this.announceChatAvailability();
+    this.describeDomBridge();
+  }
+
+  announceChatAvailability() {
+    if (this.domBridge.getMode() !== 'embedded') return;
+
+    try {
+      window.parent.postMessage({
+        type: 'ARKAIOS_CHAT_AVAILABLE',
+        data: {
+          version: '2.0.0',
+          timestamp: Date.now(),
+          features: this.getAvailableFeatures(),
+          modes: ['open', 'secure'],
+          domBridge: this.domBridge.describe()
+        }
+      }, '*');
+    } catch (error) {
+      console.warn('No fue posible anunciar el chat al contexto padre:', error);
+    }
+  }
+
+  getAvailableFeatures() {
+    const features = ['gateway.plan', 'gateway.analyze', 'gateway.generate', 'gateway.read'];
+    if (this.domBridge.isEnabled()) {
+      features.push('dom.inspect', 'dom.control');
+    }
+    return features;
+  }
+
+  describeDomBridge() {
+    const descriptor = this.domBridge.describe();
+    if (!descriptor.enabled) {
+      this.addMessage('system', '🕹️ Control DOM desactivado. Usa el botón "Adjuntar" para incrustar el chat en la pestaña que quieras controlar.', 'warning');
+      return;
+    }
+
+    if (descriptor.mode === 'runtime') {
+      this.addMessage('system', '🕹️ Control DOM activo vía proxy: las órdenes se aplicarán sobre la pestaña activa.', 'info');
+    } else if (descriptor.mode === 'embedded') {
+      this.addMessage('system', '🕹️ Control DOM enlazado directamente a esta página.', 'success');
+    }
   }
 
   showWelcomeMessage() {
@@ -202,10 +378,24 @@ class ArkaiosChatModule {
 
   handleExternalMessage(data) {
     const { message, type, from } = data;
-    
+
     if (from === 'ai') {
       this.addMessage('assistant', message, type);
     }
+  }
+
+  handleAIRegistration(aiInfo = {}) {
+    const aiId = aiInfo.id || `ai_${Date.now()}_${Math.random().toString(16).slice(2, 6)}`;
+    const platform = aiInfo.platform || aiInfo.name || 'IA externa';
+
+    this.connectedAIs.set(aiId, {
+      id: aiId,
+      platform,
+      capabilities: aiInfo.capabilities || []
+    });
+
+    this.updateAIList();
+    this.addMessage('system', `🤖 ${platform} disponible (${(aiInfo.capabilities || []).join(', ') || 'sin capacidades declaradas'})`, 'info');
   }
 
   addConnectedAI(aiInfo) {
@@ -269,7 +459,7 @@ class ArkaiosChatModule {
   async handleCommand(command) {
     const [cmd, ...args] = command.slice(1).split(' ');
     const argument = args.join(' ');
-    
+
     switch (cmd.toLowerCase()) {
       case 'plan':
         await this.executeGatewayAction('plan', { objective: argument });
@@ -299,8 +489,98 @@ class ArkaiosChatModule {
       case 'help':
         this.showHelp();
         break;
+      case 'dom':
+        await this.handleDomSlash(argument);
+        break;
       default:
         this.addMessage('assistant', `❓ Comando desconocido: ${cmd}. Usa /help para ver comandos disponibles.`, 'error');
+    }
+  }
+
+  async handleDomSlash(argument) {
+    if (!this.domBridge.isEnabled()) {
+      this.addMessage('assistant', '⚠️ Control DOM no disponible. Adjunta el chat a una pestaña activa para habilitarlo.', 'error');
+      return;
+    }
+
+    if (!argument) {
+      this.addMessage('assistant', 'Uso: /dom {"action":"READ_TEXT","selector":"h1"}', 'info');
+      return;
+    }
+
+    try {
+      const command = JSON.parse(argument);
+      await this.executeDomCommand(command);
+    } catch (error) {
+      this.addMessage('assistant', `❌ Formato DOM inválido: ${error.message}`, 'error');
+    }
+  }
+
+  promptDomCommand() {
+    if (!this.domBridge.isEnabled()) {
+      this.addMessage('assistant', 'Adjunta el chat a una pestaña para habilitar el control del DOM.', 'error');
+      return;
+    }
+
+    const template = JSON.stringify({ action: 'READ_TEXT', selector: 'h1' });
+    const input = prompt('Describe la orden DOM en formato JSON', template);
+    if (!input) return;
+
+    this.handleDomSlash(input);
+  }
+
+  async executeDomCommand(command, options = {}) {
+    if (!this.domBridge.isEnabled()) {
+      throw new Error('Control DOM no disponible en esta vista. Adjunta el chat a la pestaña objetivo.');
+    }
+
+    const normalizedAction = (command?.action || '').toUpperCase();
+    if (!normalizedAction) {
+      throw new Error('El comando DOM requiere un campo "action".');
+    }
+
+    const normalizedCommand = { ...command, action: normalizedAction };
+
+    try {
+      const result = await this.domBridge.sendCommand(normalizedCommand);
+      if (!options.silent) {
+        this.addMessage(
+          'assistant',
+          `🕹️ DOM ${normalizedAction}\n\n\`\`\`\n${JSON.stringify(result, null, 2)}\n\`\`\``,
+          'success'
+        );
+      }
+      return result;
+    } catch (error) {
+      if (!options.silent) {
+        this.addMessage('assistant', `❌ DOM ${normalizedAction}: ${error.message}`, 'error');
+      }
+      throw error;
+    }
+  }
+
+  async handleExternalDomRequest(payload, event) {
+    try {
+      const result = await this.executeDomCommand(payload.command, { silent: true });
+      if (!payload.silent) {
+        this.addMessage('system', `🤖 Orden DOM externa ejecutada (${payload.command.action})`, 'info');
+      }
+      event.source?.postMessage({
+        type: 'AI_DOM_RESULT',
+        requestId: payload.requestId || null,
+        success: true,
+        result
+      }, event.origin || '*');
+    } catch (error) {
+      event.source?.postMessage({
+        type: 'AI_DOM_RESULT',
+        requestId: payload.requestId || null,
+        success: false,
+        error: error.message
+      }, event.origin || '*');
+      if (!payload.silent) {
+        this.addMessage('assistant', `❌ DOM externo: ${error.message}`, 'error');
+      }
     }
   }
 
@@ -500,11 +780,16 @@ class ArkaiosChatModule {
 • \`/open\` - Activar modo abierto
 • \`/help\` - Mostrar esta ayuda
 
+**Control DOM (experimental):**
+• \`/dom {"action":"READ_TEXT","selector":"h1"}\` - Enviar orden en JSON
+• Botón 🕹️ - Abre un prompt para crear comandos DOM
+
 **Features:**
 🖼️ Procesamiento de imágenes con OCR
 📄 Generación de documentos
 🖨️ Soporte de impresión
 📁 Acceso a archivos locales
+🕹️ Control y lectura del DOM de la página
 🤖 Detección automática de IAs
 `;
     
