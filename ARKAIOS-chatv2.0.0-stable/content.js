@@ -176,8 +176,6 @@
  }
  return false;
  });
- // Optional: auto-create container so first open is instant (hidden by default)
- createOverlay().dataset.hidden = 'true';
  function ensureDomBridgeListener() {
  if (domListenerAttached) return;
  domListenerAttached = true;
