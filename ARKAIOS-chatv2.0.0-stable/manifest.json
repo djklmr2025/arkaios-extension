@@ -8,7 +8,9 @@
     "downloads",
     "scripting",
     "storage",
-    "tabs"
+    "tabs",
+    "tabCapture",
+    "desktopCapture"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -24,9 +26,6 @@
       ],
       "js": [
         "content.js"
-      ],
-      "css": [
-        "chat-module.css"
       ],
       "run_at": "document_idle"
     }
